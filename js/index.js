@@ -8,9 +8,15 @@ jQuery(function($){
 			path: 'resources/352-rings.svg',
 			origin: {x: 0.5, y: 0.5}
 		},{
-			key: 'tungy',
-			path: 'resources/tungy.svg',
-			origin: {x: 0.6, y: 0.95}
+			key: 'body',
+			path: 'resources/body.svg',
+			origin: {x: 0.6, y: 0.95},
+			spriteMap: {x:2, y:2}
+		},{
+			key: 'eyes',
+			path: 'resources/eyes.svg',
+			origin: {x: 0.5, y: 0.5},
+			spriteMap: {x:1, y:10}
 		}]
 	});
 });

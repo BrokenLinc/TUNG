@@ -3,7 +3,7 @@
 
 	app.game = function(spec) {
 
-		var that = {};
+		var that = tarmac.gameEntity();
 
 		var last_update;
 
@@ -51,14 +51,6 @@
 			}
 		};
 
-		//override us!
-		that.init = function(){
-		};
-		that.process = function() {
-		}
-		that.update = function() {
-		};
-
 		//begin
 		start_game_loop();
 		app.resourceManager.load(spec.resources, function(){
@@ -69,42 +61,42 @@
 		return that;
 	};
 
-	app.scene_old = function(spec) {
-		var that = {};
-		that.entities = (spec && spec.entities) || [];
+	// app.scene_old = function(spec) {
+	// 	var that = {};
+	// 	that.entities = (spec && spec.entities) || [];
 		
-		that.init = function(){
-			return that;
-		};
-		that.process = function() {
-			return that;
-		}
-		that.update = function(ctx) {
-			for(var i = 0; i < that.entities.length; i += 1) {
-				app.draw_game_entity(that.entities[i]);	
-			}
+	// 	that.init = function(){
+	// 		return that;
+	// 	};
+	// 	that.process = function() {
+	// 		return that;
+	// 	}
+	// 	that.update = function(ctx) {
+	// 		for(var i = 0; i < that.entities.length; i += 1) {
+	// 			app.draw_game_entity(that.entities[i]);	
+	// 		}
 
-			return that;
-		};
+	// 		return that;
+	// 	};
 
-		return that;
-	};
+	// 	return that;
+	// };
 
-	app.gameEntity_old = function(spec) {
-		var x = spec.x || 0,
-			y = spec.y || 0,
-			resource = spec.resource,
-			rotation = spec.rotation || 0,
-			scale = spec.scale || 1;
+	// app.gameEntity_old = function(spec) {
+	// 	var x = spec.x || 0,
+	// 		y = spec.y || 0,
+	// 		resource = spec.resource,
+	// 		rotation = spec.rotation || 0,
+	// 		scale = spec.scale || 1;
 
-		return {
-			x: x,
-			y: y,
-			resource: resource,
-			rotation: rotation,
-			scale: scale
-		};
-	};
+	// 	return {
+	// 		x: x,
+	// 		y: y,
+	// 		resource: resource,
+	// 		rotation: rotation,
+	// 		scale: scale
+	// 	};
+	// };
 
 	app.scene = app.gameEntity = function(spec) {
 		spec = spec || {};
@@ -112,10 +104,13 @@
 		var that = {};
 		that.x = spec.x || 0,
 		that.y = spec.y || 0,
+		that.origin = spec.origin || {x:0, y:0},
 		that.resource = spec.resource,
 		that.rotation = spec.rotation || 0,
 		that.scale = spec.scale || 1;
-		that.entities = (spec && spec.entities) || [];
+		that.entities = (spec && spec.entities) || [],
+		that.spriteMap = spec.spriteMap || {x: 1, y:1},
+		that.spritePos = spec.spritePos || {x: 0, y:0};
 		
 		that.process = function() {
 			that.processChildren();
@@ -146,44 +141,45 @@
 		app.ctx.fillStyle = app.background;
 		app.ctx.fillRect(0, 0, app.canvas.width, app.canvas.height);
 	};
-	app.draw_resource = function(res, x, y, scale, rotation) {
-		scale = scale || 1;
-		rotation = rotation || 0;
-		var o  = res.origin || {x:0, y:0},
-			newWidth = res.img.width*scale,
-			newHeight = res.img.height*scale;
+	// app.draw_resource = function(res, x, y, scale, rotation) {
+	// 	scale = scale || 1;
+	// 	rotation = rotation || 0;
+	// 	var o  = res.origin || {x:0, y:0},
+	// 		newWidth = res.img.width*scale,
+	// 		newHeight = res.img.height*scale;
 
-		app.ctx.translate(x, y);
-		app.ctx.rotate(rotation);
+	// 	app.ctx.translate(x, y);
+	// 	app.ctx.rotate(rotation);
 
-		app.ctx.drawImage(res.img, 
-			 - newWidth * o.x, - newHeight * o.y, 
-			newWidth, newHeight);
+	// 	app.ctx.drawImage(res.img, 
+	// 		 - newWidth * o.x, - newHeight * o.y, 
+	// 		newWidth, newHeight);
 		
-		app.ctx.rotate(-rotation);
-		app.ctx.translate(-x, -y);
-	};
-	app.draw_game_entity_old = function(e) {
-		app.draw_resource(e.resource, e.x, e.y, e.scale, e.rotation);
-	};
+	// 	app.ctx.rotate(-rotation);
+	// 	app.ctx.translate(-x, -y);
+	// };
+	// app.draw_game_entity_old = function(e) {
+	// 	app.draw_resource(e.resource, e.x, e.y, e.scale, e.rotation);
+	// };
 	app.draw_game_entity = function(e) {
-		var res = e.resource, o, newWidth, newHeight;
+		var res = e.resource, o, w, h;
 
 		app.ctx.translate(e.x, e.y);
 		app.ctx.rotate(e.rotation);
 		app.ctx.scale(e.scale, e.scale);
 
 		if(res) {
-			o  = res.origin || {x:0, y:0};
-			newWidth = res.img.width;//*e.scale;
-			newHeight = res.img.height;//*e.scale;
+			o = res.origin;
+			w = res.img.width/res.spriteMap.x;
+			h = res.img.height/res.spriteMap.y;
 
-			app.ctx.drawImage(res.img, 
-				 - newWidth * o.x, - newHeight * o.y, 
-				newWidth, newHeight);
+			app.ctx.drawImage(res.img,
+				e.spritePos.x * w, e.spritePos.y * h,
+				w, h, 
+				- w * o.x, - h * o.y, 
+				w, h);
 		}
 
-		//TODO: add scaling into transforms for children
 		e.updateChildren();
 		
 		app.ctx.scale(1/e.scale, 1/e.scale);

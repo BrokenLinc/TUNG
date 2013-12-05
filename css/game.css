@@ -14,7 +14,3 @@ body {
   height: 0;
   overflow: hidden;
 }
-img {
-  max-width: 250px;
-  max-height: 250px;
-}
