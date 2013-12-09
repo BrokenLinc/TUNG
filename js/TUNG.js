@@ -1,118 +1,119 @@
-(function($, tarmac){
+(function($, app){
 	var TUNG = namespace('TUNG');
 
 	TUNG.game = function(spec) {
-		var that = new tarmac.game(spec);
+		var game_scene,
+			that = new tarmac.game(spec);
 
-		var game_scene;
-
-		//scene stuff
+		//init after resources are loaded
 		that.init = function(){
-			game_scene = TUNG.tungy_scene().init();
+			game_scene = TUNG.game_scene();
 			that.entities.push(game_scene);
 		};
 
 		return that;
 	};
 
-	TUNG.tungy_scene = function(spec) {
-		var that = tarmac.gameEntity(spec),
-			super_process = that.process,
-			tungy;
+	TUNG.game_scene = function() {
+		var doJump, 
+			hero_max_y = 60,
+			hero = TUNG.hero({ y: -hero_max_y }),
+ 			planet = TUNG.planet({ y: hero_max_y+70 }),
+ 			that = tarmac.scene({
+ 				entities:[planet, hero]
+ 			});
 
-		that.init = function(){
- 			tungy = TUNG.tungy();
- 			that.entities.push(tungy);
+ 		tarmac.keysDown.on('UP', function(){
+ 			if(hero.y >= hero_max_y) hero.dy = -20;
+ 		});
 
- 			return that;
-		};
+ 		that.adjust = function() {
+ 			//TODO: consider adding "gravity" behavior to gameEntities
+ 			//TODO: consider adding "jump" and "isGrounded" methods to hero
+ 			hero.dy += 2;
+ 			hero.y += hero.dy;
+ 			if(hero.y > hero_max_y) {
+ 				hero.y = hero_max_y;
+ 				hero.dy = 0;
+ 			}
 
-		that.process = function() {
-			//origin/scene-scaling
-			var w = tarmac.canvas.width;
-			var h = tarmac.canvas.height;
-			that.x = w/2;
-			that.y = h/2;
-			that.scale = Math.min(w/800, h/450);
-			return super_process();
-		}
+ 			//NEXT: determine how/when to detect tongue
+ 			//proximity of item center to end of tongue (circle)
+ 			//overlapping a hit area (rectange)
+
+ 			if(tarmac.keysDown[']']) planet.scale *= 1.05;
+ 			if(tarmac.keysDown['[']) planet.scale /= 1.05;
+ 			if(tarmac.keysDown['LEFT']) {
+ 				hero.isMirrored = true;
+ 				planet.rotate(0.01/planet.scale);
+ 			}
+ 			if(tarmac.keysDown['RIGHT']) {
+ 				hero.isMirrored = false;
+ 				planet.rotate(-0.01/planet.scale);
+ 			}
+ 		};
 
 		return that;
 	};
 
-	TUNG.tungy = function(spec) {
-		var eyes = TUNG.tungy_eyes(),
-		that = tarmac.gameEntity({
-				resource: tarmac.resourceManager.byKey('body'),
-			scale: 0.8,
-			y: 80,
-			entities: [eyes]
-			});
+	TUNG.hero = function(spec) {
+		var eyes = TUNG.tungy_eyes({ x:15, y:20 }),
+			body = tarmac.sprite('body'),
+			that = tarmac.gameEntity($.extend({
+				scale: 0.8,
+				entities: [body, eyes]
+			}, spec));
+
+		that.dy = 0;
 
 		return that;
 	};
 
+	//TODO: fold animation config & logic into resources and tarmac.sprite
 	TUNG.tungy_eyes = function(spec) {
 		var blink = 0;
 		var blink_open = 3000/30;
 		var blink_closed = 3100/30;
-		that = tarmac.gameEntity({
-			resource: tarmac.resourceManager.byKey('eyes'),
-			x:-6,
-			y:-82
-		}),
-		super_process = that.process;
+		var that = tarmac.sprite('eyes', spec);
 
 		that.process = function() {
 			blink += 1;
 			if(blink<blink_open) {
-				that.spritePos.y = 0;
+				that.frame.y = 0;
 			} else if(blink<blink_closed) {
-				that.spritePos.y = 1;
+				that.frame.y = 1;
 			} else {
 				blink = 0;
 			}
-			return super_process();
+
+			that.processChildren();
+			return that;
 		}
 
 		return that;
 	};
 
-	// TUNG.crazy_spinner_scene = function(spec) {
-	// 	var that = tarmac.gameEntity(spec);
+	TUNG.planet = function(spec) {
+		var globe = TUNG.globe({ y: 1000 }),
+			that = tarmac.gameEntity($.extend({
+				entities:[globe]
+			},spec));
 
-	// 	var spinner;
+		that.rotate = function(deg) {
+			globe.rotation += deg;
+		};
 
-	// 	that.init = function(){
-	// 		$(tarmac.canvas).on('mousemove', function(e){
-	// 			spinner.x = e.pageX;
-	// 			spinner.y = e.pageY;
-	// 		});
- // 			spinner = TUNG.crazy_spinner({num:1});
- // 			that.entities.push(spinner);
+		return that;
+	};
 
- // 			return that;
-	// 	};
+	TUNG.globe = function(spec) {
+		var that = tarmac.gameEntity($.extend({
+				entities:[
+					tarmac.shapes.circle({ radius: spec.y }), 
+					TUNG.tungy_eyes({ y:-1000 })]
+			},spec));
 
-	// 	return that;
-	// };
-
-	// TUNG.crazy_spinner = function(spec) {
-	// 	var entities = spec.num < 10? [TUNG.crazy_spinner({num:spec.num+1})] : null; 
-	// 	var that = tarmac.gameEntity({
- // 				resource: tarmac.resourceManager.byKey('352-rings'),
-	// 			scale: 0.7,
-	// 			x: 210,
-	// 			entities: entities
- // 			}),
-	// 		super_process = that.process;
-
-	// 	that.process = function() {
-	// 		that.rotation += 0.01;
-	// 		return super_process();
-	// 	}
-
-	// 	return that;
-	// };
+		return that;
+	};
 
 })(jQuery, tarmac);

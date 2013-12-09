@@ -11,6 +11,7 @@
 		app.background = spec.background;
 		app.canvas = spec.canvas;
 		app.ctx = app.canvas.getContext('2d');
+		app.mat = new Transform();
 		app.resourceManager.container = spec.resourceContainer;
 
 		//canvas setup
@@ -61,59 +62,42 @@
 		return that;
 	};
 
-	// app.scene_old = function(spec) {
-	// 	var that = {};
-	// 	that.entities = (spec && spec.entities) || [];
-		
-	// 	that.init = function(){
-	// 		return that;
-	// 	};
-	// 	that.process = function() {
-	// 		return that;
-	// 	}
-	// 	that.update = function(ctx) {
-	// 		for(var i = 0; i < that.entities.length; i += 1) {
-	// 			app.draw_game_entity(that.entities[i]);	
-	// 		}
-
-	// 		return that;
-	// 	};
-
-	// 	return that;
-	// };
-
-	// app.gameEntity_old = function(spec) {
-	// 	var x = spec.x || 0,
-	// 		y = spec.y || 0,
-	// 		resource = spec.resource,
-	// 		rotation = spec.rotation || 0,
-	// 		scale = spec.scale || 1;
-
-	// 	return {
-	// 		x: x,
-	// 		y: y,
-	// 		resource: resource,
-	// 		rotation: rotation,
-	// 		scale: scale
-	// 	};
-	// };
-
-	app.scene = app.gameEntity = function(spec) {
+	app.gameEntity = function(spec) {
 		spec = spec || {};
 
 		var that = {};
 		that.x = spec.x || 0,
 		that.y = spec.y || 0,
-		that.origin = spec.origin || {x:0, y:0},
 		that.resource = spec.resource,
 		that.rotation = spec.rotation || 0,
 		that.scale = spec.scale || 1;
-		that.entities = (spec && spec.entities) || [],
-		that.spriteMap = spec.spriteMap || {x: 1, y:1},
-		that.spritePos = spec.spritePos || {x: 0, y:0};
+		that.isMirrored = spec.isMirrored;
+		that.isFlipped = spec.isFlipped;
+		that.entities = (spec && spec.entities) || [];
 		
+		var add_transform = function(transform, target) {
+			target.translate(transform.x, transform.y);
+			target.rotate(transform.r);
+			target.scale(transform.sx, transform.sy);
+		};
+		var remove_transform = function(transform, target) {
+			target.scale(1/transform.sx, 1/transform.sy);
+			target.rotate(-transform.r);
+			target.translate(-transform.x, -transform.y);
+		};
+
 		that.process = function() {
+			var transform_cache = {
+				x:that.x, y:that.y, r:that.rotation,
+				sx:that.scale * (that.isMirrored? -1 : 1),
+				sy:that.scale * (that.isFlipped? -1 : 1)
+			};
+
+			add_transform(transform_cache, app.mat);
+			that.adjust && that.adjust();
 			that.processChildren();
+			remove_transform(transform_cache, app.mat);
+
 			return that;
 		}
 		that.processChildren = function() {
@@ -123,15 +107,54 @@
 			return that;
 		}
 		that.update = function() {
-			app.draw_game_entity(that);
+			var transform_cache = {
+				x:that.x, y:that.y, r:that.rotation,
+				sx:that.scale * (that.isMirrored? -1 : 1),
+				sy:that.scale * (that.isFlipped? -1 : 1)
+			};
+
+			add_transform(transform_cache, app.ctx);
+			that.draw && that.draw();
+			that.updateChildren();
+			remove_transform(transform_cache, app.ctx);
+
 			return that;
 		};
 		that.updateChildren = function() {
 			for(var i = 0; i < that.entities.length; i += 1) {
-				app.draw_game_entity(that.entities[i]);	
+				that.entities[i].update();
 			}
 			return that;
 		}
+
+		return that;
+	};
+
+	app.scene = function(spec) {
+		var that = app.gameEntity(spec),
+			super_process = that.process;
+
+		that.process = function() {
+			var w = tarmac.canvas.width;
+			var h = tarmac.canvas.height;
+			that.x = w/2;
+			that.y = h/2;
+			that.scale = Math.min(w/800, h/450);
+
+			return super_process();
+		};
+
+		return that;
+	};
+
+	app.sprite = function(key, spec) {
+		var that = app.gameEntity(spec),
+			resource = app.resourceManager.byKey(key);
+		that.frame = spec && spec.frame || {x: 0, y:0};
+		
+		that.draw = function() {
+			app.draw_resource(resource, that.frame);
+		};
 
 		return that;
 	};
@@ -141,51 +164,30 @@
 		app.ctx.fillStyle = app.background;
 		app.ctx.fillRect(0, 0, app.canvas.width, app.canvas.height);
 	};
-	// app.draw_resource = function(res, x, y, scale, rotation) {
-	// 	scale = scale || 1;
-	// 	rotation = rotation || 0;
-	// 	var o  = res.origin || {x:0, y:0},
-	// 		newWidth = res.img.width*scale,
-	// 		newHeight = res.img.height*scale;
+	app.draw_resource = function(res, spritePos) {
+		var o, w, h;
+		o = res.origin || {x:0.5, y:0.5};
+		w = res.img.width/res.spriteMap.x;
+		h = res.img.height/res.spriteMap.y;
 
-	// 	app.ctx.translate(x, y);
-	// 	app.ctx.rotate(rotation);
-
-	// 	app.ctx.drawImage(res.img, 
-	// 		 - newWidth * o.x, - newHeight * o.y, 
-	// 		newWidth, newHeight);
-		
-	// 	app.ctx.rotate(-rotation);
-	// 	app.ctx.translate(-x, -y);
-	// };
-	// app.draw_game_entity_old = function(e) {
-	// 	app.draw_resource(e.resource, e.x, e.y, e.scale, e.rotation);
-	// };
-	app.draw_game_entity = function(e) {
-		var res = e.resource, o, w, h;
-
-		app.ctx.translate(e.x, e.y);
-		app.ctx.rotate(e.rotation);
-		app.ctx.scale(e.scale, e.scale);
-
-		if(res) {
-			o = res.origin;
-			w = res.img.width/res.spriteMap.x;
-			h = res.img.height/res.spriteMap.y;
-
-			app.ctx.drawImage(res.img,
-				e.spritePos.x * w, e.spritePos.y * h,
-				w, h, 
-				- w * o.x, - h * o.y, 
-				w, h);
-		}
-
-		e.updateChildren();
-		
-		app.ctx.scale(1/e.scale, 1/e.scale);
-		app.ctx.rotate(-e.rotation);
-		app.ctx.translate(-e.x, -e.y);
+		app.ctx.drawImage(res.img,
+			spritePos.x * w, spritePos.y * h,
+			w, h, 
+			- w * o.x, - h * o.y, 
+			w, h);
 	};
+
+	//TODO: transformManager({ctx: ctx}) //optional, 
+	//.scale(), .rotate() //cache and apply to ctx if present, return values if no args
+	//.getMousePosition()
+	//use for updateTransformManager (app.ctx_tf) and processTransformManager (app.proc_tf)
+
+	//applies current matrix and returns new point
+	var transformPoint = function(p, m) {
+		var x = p.x*m[0] + p.y*m[2] + m[4];
+		var y = p.x*m[1] + p.y*m[3] + m[5];
+		return {x:x, y:y};
+	}
 
 	//Singleton
 	app.resourceManager = (function() {
@@ -220,11 +222,60 @@
 			}
 		}
 
-
 		that.byKey = byKey;
 		that.load = load;
 
 		return that;
 	}());
+
+	app.keysDown = (function(){
+		var that = new EventDispatcher();
+
+		var indices = {
+			37: 'LEFT',
+			38: 'UP',
+			39: 'RIGHT',
+			40: 'DOWN',
+			219: '[',
+			221: ']'
+		};
+
+		$(window).on('keydown', function(e){
+			var key = indices[e.which];
+			that[key] = true;
+			that.trigger(key);
+		}).on('keyup', function(e){
+			that[indices[e.which]] = false;
+		});
+
+		return that;
+	}());
+
+})(jQuery);
+
+(function($){
+	var shapes = namespace('tarmac.shapes');
+
+	shapes.circle = function(spec) {
+		var spec = spec || {},
+			that = tarmac.gameEntity(spec);
+
+		that.radius = spec.radius || 100;
+		that.fill = spec.fill || '#888';
+
+		that.draw = function() {
+			tarmac.ctx.beginPath();
+			tarmac.ctx.lineWidth = 0;
+			tarmac.ctx.arc(0, 0, that.radius, 0, 2 * Math.PI, false);
+			tarmac.ctx.fillStyle = that.fill;
+			tarmac.ctx.fill();
+			// tarmac.ctx.strokeStyle = '#003300';
+			// tarmac.ctx.stroke();
+
+			return that;
+		};
+
+		return that;
+	};
 
 })(jQuery);
