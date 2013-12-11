@@ -23,7 +23,7 @@ jQuery(function($){
 			key: 'tongue',
 			path: 'resources/tongue.svg',
 			spriteMap: {x:2, y:7},
-			origin: {x:0.15, y:0.5}
+			origin: {x:0.10, y:0.5}
 		}],
 		sprite_animations: [{
 			key: 'tongue-lick',

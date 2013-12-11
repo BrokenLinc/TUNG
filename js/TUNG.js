@@ -25,12 +25,11 @@
  				entities:[planet, hero]
  			});
 
- 		$(window).on('mousedown', function(e){
- 			TUNG.ether.trigger('tongue-zap', {x: e.pageX, y: e.pageY});
- 		});
-
  		TUNG.ether.on('tongue-touch', function(e){
- 			planet.scale /= (1 + e.remove().mass/1000) ;
+ 			if(!TUNG.tongue_got_something) {
+	 			planet.scale /= (1 + e.remove().mass/1000);
+	 			TUNG.tongue_got_something = true;
+	 		}
  		});
 
  		that.adjust = function() {
@@ -53,7 +52,7 @@
 		var eyes = TUNG.tungy_eyes({ x:15, y:20 }),
 			body = tarmac.sprite('body'),
 			mouth = tarmac.sprite('mouth', { y:50 }),
-			tongue = tarmac.sprite('tongue', { x: -6, y:50, visible:false }),
+			tongue = TUNG.tongue({ x: -16, y:50, visible:false }),
 			that = tarmac.gameEntity($.extend({
 				scale: 0.8,
 				entities: [body, eyes, mouth, tongue]
@@ -78,6 +77,7 @@
  		};
 
  		that.lick = function() {
+ 			TUNG.tongue_got_something = false;
  			mouth.frame  = { x:0, y:1 };
  			tongue.playOnce('tongue-lick', function(){
  				mouth.frame  = { x:0, y:0 };
@@ -99,10 +99,10 @@
 
 	//TODO: fold animation config & logic into resources and tarmac.sprite
 	TUNG.tungy_eyes = function(spec) {
-		var blink = 0;
-		var blink_open = 3000/30;
-		var blink_closed = 3100/30;
-		var that = tarmac.sprite('eyes', spec);
+		var blink = 0,
+			blink_open = 3000/30,
+			blink_closed = 3100/30,
+			that = tarmac.sprite('eyes', spec);
 
 		that.process = function() {
 			blink += 1;
@@ -144,9 +144,9 @@
 
 		that.start = function() {
 			for(var i = 50; i > 0; i -= 1) {
-				var mass = 2 + i * 1;
-				var rad = 1000 + mass;
-				var rot = Math.random() * Math.PI*2;
+				var mass = 2 + i * 1,
+					rad = 1000 + mass,
+					rot = Math.random() * Math.PI*2;
 				that.addEntity(TUNG.rock({
 					x: Math.cos(rot) * rad, 
 					y: Math.sin(rot) * rad, 
@@ -161,7 +161,7 @@
 
 	TUNG.rock = function(spec) {
 
-		var test_point, 
+		var test_points, 
 			radius = Math.sqrt(spec.mass) * 10,
 			that = tarmac.shapes.circle($.extend({
 				radius:radius
@@ -170,22 +170,41 @@
 		that.mass = spec.mass;
 
 		TUNG.ether.on('tongue-zap', function(e) {
-			test_point = e;
+			test_points = e;
 		});
 
 		that.adjust = function() {
-			if(test_point) {
-				var p = app.mat.globalToLocal(test_point);
-				//circle test
-				if(pointsCloserThan(p, {x:0, y:0}, radius)) {
-					TUNG.ether.trigger('tongue-touch', that); 
+			if(test_points) {
+				for(var i = 0; i < test_points.length; i += 1) {
+					var test_point = test_points[i],
+						p = app.mat.globalToLocal(test_point);
+					//circle test
+					if(pointsCloserThan(p, {x:0, y:0}, radius)) {
+						TUNG.ether.trigger('tongue-touch', that); 
+					}
+					//TODO: rect test for other shapes
+					test_point = null;
 				}
-				//TODO: rect test for other shapes
-				test_point = null;
 			}
 		};
 
 		return that;
 	};
+
+	TUNG.tongue = function(spec) {
+		var that = tarmac.sprite('tongue', spec);
+
+		that.onAnimate = function() {
+			var x = 60 + 25 * that.frame.y,
+				c = [{x:0, y:0, r:15}];
+			for(var i = x - 15; i > 0; i-=20) {
+				var p = app.mat.localToGlobal({ x:i, y:0 });
+				c.push({ x:p.x, y:p.y, r:15 });
+			}
+			TUNG.ether.trigger('tongue-zap', c);
+		};
+
+		return that;
+	}
 
 })(jQuery, tarmac);

@@ -212,6 +212,7 @@
 					if(animation) keyframe = animation.keyframes[animation_keyframe_index];
 				}
 				if(animation) that.frame = $.extend(that.frame, keyframe)
+				that.onAnimate && that.onAnimate();
 			}
 		};
 
