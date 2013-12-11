@@ -13,6 +13,7 @@
 		app.ctx = app.canvas.getContext('2d');
 		app.mat = new Transform();
 		app.resourceManager.container = spec.resourceContainer;
+		app.spriteAnimationManager.load(spec.sprite_animations);
 
 		//canvas setup
 		var fit_canvas_to = function(element) {
@@ -73,8 +74,33 @@
 		that.scale = spec.scale || 1;
 		that.isMirrored = spec.isMirrored;
 		that.isFlipped = spec.isFlipped;
-		that.entities = (spec && spec.entities) || [];
+		that.visible = (spec.visible == null)? true : spec.visible;
+		that.entities = [];
 		
+		that.addEntity = function(e) {
+			e.parent = that;
+			that.entities.push(e);
+			return that;
+		};
+		that.removeEntity = function(e) {
+			var i = that.entities.indexOf(e);
+			if(i >= 0) {
+				e.parent = null;
+				that.entities.splice(i, 1);
+			}
+			return that;
+		};
+		that.remove = function() {
+			that.parent && that.parent.removeEntity(that);
+			return that;
+		};
+
+		if(spec.entities) {
+			for(var i = 0; i < spec.entities.length; i += 1) {
+				that.addEntity(spec.entities[i]);
+			}
+		}
+
 		var add_transform = function(transform, target) {
 			target.translate(transform.x, transform.y);
 			target.rotate(transform.r);
@@ -86,6 +112,17 @@
 			target.translate(-transform.x, -transform.y);
 		};
 
+		that.init = function() {
+			that.start && that.start();
+			that.initChildren();
+			return that;
+		};
+		that.initChildren = function() {
+			for(var i = 0; i < that.entities.length; i += 1) {
+				that.entities[i].init();
+			}
+			return that;
+		};
 		that.process = function() {
 			var transform_cache = {
 				x:that.x, y:that.y, r:that.rotation,
@@ -114,7 +151,7 @@
 			};
 
 			add_transform(transform_cache, app.ctx);
-			that.draw && that.draw();
+			if(that.visible) that.draw && that.draw();
 			that.updateChildren();
 			remove_transform(transform_cache, app.ctx);
 
@@ -149,11 +186,56 @@
 
 	app.sprite = function(key, spec) {
 		var that = app.gameEntity(spec),
-			resource = app.resourceManager.byKey(key);
+			resource = app.resourceManager.byKey(key),
+			animation, 
+			animation_times,
+			animation_repeat, 
+			animation_complete, 
+			animation_keyframe_index,
+			animation_keyframe_index_start_time;
 		that.frame = spec && spec.frame || {x: 0, y:0};
 		
+		that.adjust = function() {
+			if(animation) {
+				var keyframe = animation.keyframes[animation_keyframe_index];
+				if((new Date()).getTime() - animation_keyframe_index_start_time > (keyframe.d || animation.d)) {
+					animation_keyframe_index++;
+					if(animation_keyframe_index >= animation.keyframes.length) {
+						animation_times++;
+						if(animation_repeat >= 0 && animation_times > animation_repeat) {
+							animation_complete && animation_complete();
+							that.stop();
+						} else {
+							animation_keyframe_index = 0;
+						}
+					}
+					if(animation) keyframe = animation.keyframes[animation_keyframe_index];
+				}
+				if(animation) that.frame = $.extend(that.frame, keyframe)
+			}
+		};
+
 		that.draw = function() {
 			app.draw_resource(resource, that.frame);
+		};
+
+		that.play = function(animationKey, repeat, complete) {
+			animation = app.spriteAnimationManager.byKey(animationKey);
+			if(animation) {
+				animation_times = 0;
+				animation_repeat = repeat;
+				animation_keyframe_index = 0;
+				animation_complete = complete;
+				animation_keyframe_index_start_time = (new Date()).getTime();
+			}
+			return that;
+		};
+		that.playOnce = function(animationKey, complete) {
+			return that.play(animationKey, 0, complete);
+		}
+		that.stop = function() {
+			animation = null;
+			return that;
 		};
 
 		return that;
@@ -167,8 +249,8 @@
 	app.draw_resource = function(res, spritePos) {
 		var o, w, h;
 		o = res.origin || {x:0.5, y:0.5};
-		w = res.img.width/res.spriteMap.x;
-		h = res.img.height/res.spriteMap.y;
+		w = $(res.img).width()/res.spriteMap.x;
+		h = $(res.img).height()/res.spriteMap.y;
 
 		app.ctx.drawImage(res.img,
 			spritePos.x * w, spritePos.y * h,
@@ -176,18 +258,6 @@
 			- w * o.x, - h * o.y, 
 			w, h);
 	};
-
-	//TODO: transformManager({ctx: ctx}) //optional, 
-	//.scale(), .rotate() //cache and apply to ctx if present, return values if no args
-	//.getMousePosition()
-	//use for updateTransformManager (app.ctx_tf) and processTransformManager (app.proc_tf)
-
-	//applies current matrix and returns new point
-	var transformPoint = function(p, m) {
-		var x = p.x*m[0] + p.y*m[2] + m[4];
-		var y = p.x*m[1] + p.y*m[3] + m[5];
-		return {x:x, y:y};
-	}
 
 	//Singleton
 	app.resourceManager = (function() {
@@ -197,12 +267,12 @@
 
 		that.container = $('body');
 
-		var byKey = function(key) {
+		that.byKey = function(key) {
 			for(i in resources) {
 				if(resources[i].key == key) return resources[i];
 			}
 		};
-		var load = function(sources, complete) {
+		that.load = function(sources, complete) {
 			//TODO: skip duplicates
 
 			var inc = function() {
@@ -222,8 +292,22 @@
 			}
 		}
 
-		that.byKey = byKey;
-		that.load = load;
+		return that;
+	}());
+
+	//Singleton
+	app.spriteAnimationManager = (function() {
+		var that = {},
+			animations = [];
+
+		that.byKey = function(key) {
+			for(i in animations) {
+				if(animations[i].key == key) return animations[i];
+			}
+		};
+		that.load = function(sources) {
+			animations = sources;
+		}
 
 		return that;
 	}());
@@ -241,11 +325,11 @@
 		};
 
 		$(window).on('keydown', function(e){
-			var key = indices[e.which];
+			var key = indices[e.which] || String.fromCharCode(e.which);
 			that[key] = true;
 			that.trigger(key);
 		}).on('keyup', function(e){
-			that[indices[e.which]] = false;
+			that[indices[e.which] || String.fromCharCode(e.which)] = false;
 		});
 
 		return that;

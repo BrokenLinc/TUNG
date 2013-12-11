@@ -35,6 +35,34 @@ Array.matrix = function (m, n, initial) {
 	}
 	return mat;
 };
+if (!Array.prototype.indexOf) {
+  Array.prototype.indexOf = function (searchElement , fromIndex) {
+    var i,
+        pivot = (fromIndex) ? fromIndex : 0,
+        length;
+
+    if (!this) {
+      throw new TypeError();
+    }
+
+    length = this.length;
+
+    if (length === 0 || pivot >= length) {
+      return -1;
+    }
+
+    if (pivot < 0) {
+      pivot = length - Math.abs(pivot);
+    }
+
+    for (i = pivot; i < length; i++) {
+      if (this[i] === searchElement) {
+        return i;
+      }
+    }
+    return -1;
+  };
+}
 function namespace(namespaceString) {
     var parts = namespaceString.split('.'),
         parent = window,
@@ -240,31 +268,48 @@ function Transform(context) {
         this.setTransform();
     };
 
+    var invert = function(matrix) {
+    	var result = [];
+        var d = 1 / (matrix[0] * matrix[3] - matrix[1] * matrix[2]);
+        var m0 = matrix[3] * d;
+        var m1 = -matrix[1] * d;
+        var m2 = -matrix[2] * d;
+        var m3 = matrix[0] * d;
+        var m4 = d * (matrix[2] * matrix[5] - matrix[3] * matrix[4]);
+        var m5 = d * (matrix[1] * matrix[4] - matrix[0] * matrix[5]);
+        result[0] = m0;
+        result[1] = m1;
+        result[2] = m2;
+        result[3] = m3;
+        result[4] = m4;
+        result[5] = m5;
+
+        return result;
+    };
+
     this.invert = function() {
-        var d = 1 / (this.matrix[0] * this.matrix[3] - this.matrix[1] * this.matrix[2]);
-        var m0 = this.matrix[3] * d;
-        var m1 = -this.matrix[1] * d;
-        var m2 = -this.matrix[2] * d;
-        var m3 = this.matrix[0] * d;
-        var m4 = d * (this.matrix[2] * this.matrix[5] - this.matrix[3] * this.matrix[4]);
-        var m5 = d * (this.matrix[1] * this.matrix[4] - this.matrix[0] * this.matrix[5]);
-        this.matrix[0] = m0;
-        this.matrix[1] = m1;
-        this.matrix[2] = m2;
-        this.matrix[3] = m3;
-        this.matrix[4] = m4;
-        this.matrix[5] = m5;
-        this.setTransform();
+    	this.setMatrix(invert(this.matrix));
     };
     
      //==========================================
     // Helpers
     //==========================================
 
-    this.transformPoint = function(x, y) {
+    this.transformPoint = function(x, y, doInverse) {
+    	var matrix = doInverse? invert(this.matrix) : this.matrix;
+
         return {
-            x: x * this.matrix[0] + y * this.matrix[2] + this.matrix[4], 
-            y: x * this.matrix[1] + y * this.matrix[3] + this.matrix[5]
+            x: x * matrix[0] + y * matrix[2] + matrix[4], 
+            y: x * matrix[1] + y * matrix[3] + matrix[5]
         };
     };
+    this.localToGlobal = function(p) {
+    	return this.transformPoint(p.x, p.y);
+    };
+    this.globalToLocal = function(p) {
+    	return this.transformPoint(p.x, p.y, true);	
+    };
+}
+function pointsCloserThan(p, q, d) {
+	return Math.pow(p.x - q.x, 2) + Math.pow(p.y - q.y, 2) < Math.pow(d,2);
 }

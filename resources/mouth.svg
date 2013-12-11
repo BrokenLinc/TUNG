@@ -1,0 +1,19 @@
+<?xml version="1.0" standalone="no"?>
+<!-- Generator: Adobe Fireworks 10, Export SVG Extension by Aaron Beall (http://fireworks.abeall.com) . Version: 0.6.0  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg id="mouth" viewBox="0 0 250 500" style="background-color:#ffffff00" version="1.1"
+	xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve"
+	x="0px" y="0px" width="250px" height="500px"
+>
+	<path d="M 0 0 L 250 0 L 250 500 L 0 500 L 0 0 Z" fill="none"/>
+	<g>
+		<path id="Ellipse" d="M 119 32.0027 C 118.4331 26.9101 140.75 26.8759 140.75 32 C 140.75 37.124 134.5001 32.6667 130.5 32.6667 C 126.4999 32.6667 119.1667 33.5 119 32.0027 Z" fill="#ff6633"/>
+		<path d="M 116 27 C 141 19 149 30 149 30 " stroke="#000000" stroke-width="2" fill="none"/>
+	</g>
+	<g>
+		<g>
+			<path id="Ellipse2" d="M 120.012 90.3522 C 119.3391 84.4388 142.2175 86.6948 141.3805 91.7172 C 140.6042 96.3749 135.761 92.0148 131.998 91.7908 C 128.0358 91.555 120.198 91.9863 120.012 90.3522 Z" fill="#ff6633"/>
+		</g>
+		<path id="Ellipse3" d="M 96.0332 79.9216 C 94.2617 50.7932 164 50.5977 164 79.9063 C 164 97 144.4697 83.7196 131.9697 83.7196 C 119.4698 83.7196 96.5541 88.4859 96.0332 79.9216 Z" fill="#000000"/>
+	</g>
+</svg>
