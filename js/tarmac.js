@@ -1,3 +1,48 @@
+// game
+//	canvas 				(DOM element)
+//	background 			(CSS color)
+//	resourceContainer	(DOM element)
+//	resources			(Array/Resource)
+//	sprite_animations	(Array/SpriteAnimation)
+//	resourcePathPrefix	(String)
+
+// gameEntity
+//	x					(Number) // default 0
+//	y					(Number) // default 0
+//	resource			(String/ResourceKey)
+//	scale				(Number) // default 1
+//	rotate				(Number) // default 0
+//	isMirrored			(Boolean)
+//	isFlipped			(Boolean)
+//	visible				(Boolean)
+//	entities			(Array)
+
+// start --> adjust --> draw
+
+// Resource
+//		path			(String)
+//		key				(String) // optional, defaults to filename
+//		spriteMap		(Object)
+//			x			(Number)
+//			y			(Number)
+//		origin			(Object)
+//			x			(Number) // default 0.5
+//			y			(Number) // default 0.5
+
+// SpriteAnimation
+//	key					(String)
+//	d					(Number) // Default duration of each frame
+//	keyframes			(Array/SpriteFrame)
+
+// SpriteFrame
+//	x					(Number) // optional, only if changed
+//	y					(Number) // optional, only if changed
+//	d					(Number) // optional, only if non-default
+
+// Gameloop Overrides & [Events]
+//	gameEntity: start --> adjust --> draw
+//	sprite: 	start --> adjust --> [onAnimate] --> draw
+
 (function($){
 	var app = namespace('tarmac');
 
@@ -8,7 +53,7 @@
 		var last_update;
 
 		//global init
-		app.background = spec.background;
+		app.background = spec.background || '#000';
 		app.canvas = spec.canvas;
 		app.ctx = app.canvas.getContext('2d');
 		app.mat = new Transform();
@@ -55,10 +100,14 @@
 
 		//begin
 		start_game_loop();
-		app.resourceManager.load(spec.resources, function(){
-			that.init();
-			isPreloaded = true;
-		});
+		app.resourceManager.load(
+			spec.resources, 
+			spec.resourcePathPrefix, 
+			function(){
+				that.init();
+				isPreloaded = true;
+			}
+		);
 
 		return that;
 	};
@@ -273,7 +322,7 @@
 				if(resources[i].key == key) return resources[i];
 			}
 		};
-		that.load = function(sources, complete) {
+		that.load = function(sources, pathPrefix, complete) {
 			//TODO: skip duplicates
 
 			var inc = function() {
@@ -285,11 +334,12 @@
 
 			for(var i = 0; i< sources.length; i += 1) {
 				var res = $.extend({}, sources[i], {img: new Image()});
+				if(!res.key) res.key = res.path.split('.')[0];
 				resources.push(res);
 				$(res.img)
 					.appendTo(that.container)
 					.on('load', inc)
-					.attr('src', res.path);
+					.attr('src', (pathPrefix || '') + res.path);
 			}
 		}
 

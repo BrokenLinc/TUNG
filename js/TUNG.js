@@ -7,7 +7,37 @@
 
 	TUNG.game = function(spec) {
 		var game_scene,
-			that = new tarmac.game(spec);
+			that = new tarmac.game($.extend({
+				//TODO: convert to indexed names?
+				resources: [{
+					path: 'body.svg',
+					spriteMap: {x:2, y:2}
+				},{
+					path: 'eyes.svg',
+					spriteMap: {x:1, y:10}
+				},{
+					path: 'mouth.svg',
+					spriteMap: {x:1, y:10}
+				},{
+					path: 'tongue.svg',
+					spriteMap: {x:2, y:7},
+					origin: {x:0.10, y:0.5}
+				}],
+				sprite_animations: [{
+					key: 'tongue-lick',
+					d: 60,
+					keyframes:[
+						{x:0, y:0},
+						{y:2},
+						{y:4},
+						{y:6},
+						{x:1, y:6},
+						{y:4},
+						{y:2},
+						{y:0}
+					]
+				}]
+			},spec));
 
 		//after resources are loaded
 		that.start = function(){
@@ -19,12 +49,14 @@
 	};
 
 	TUNG.game_scene = function() {
+		//init
 		var hero = TUNG.hero({ max_y: TUNG.ground_y - 60 }),
  			planet = TUNG.planet({ y: TUNG.ground_y }),
  			that = tarmac.scene({
  				entities:[planet, hero]
  			});
 
+ 		//custom event listeners
  		TUNG.ether.on('tongue-touch', function(e){
  			if(!TUNG.tongue_got_something) {
 	 			planet.scale /= (1 + e.remove().mass/1000);
@@ -32,7 +64,9 @@
 	 		}
  		});
 
+ 		//overrides
  		that.adjust = function() {
+ 			//keyboard input
  			if(tarmac.keysDown[']']) planet.scale *= 1.05;
  			if(tarmac.keysDown['[']) planet.scale /= 1.05;
  			if(tarmac.keysDown['LEFT']) {
@@ -49,6 +83,7 @@
 	};
 
 	TUNG.hero = function(spec) {
+		//init
 		var eyes = TUNG.tungy_eyes({ x:15, y:20 }),
 			body = tarmac.sprite('body'),
 			mouth = tarmac.sprite('mouth', { y:50 }),
@@ -61,6 +96,7 @@
 		that.dy = 0;
 		that.max_y = spec.max_y || 0;
 
+ 		//keyboard input
  		tarmac.keysDown.on('UP', function(){
  			that.jump();
  		});
@@ -68,14 +104,13 @@
  			that.lick();
  		});
 
+ 		//methods
  		that.isGrounded = function() {
  			return that.y >= that.max_y;
  		};
-
  		that.jump = function() {
  			if(that.isGrounded()) that.dy = -20;
  		};
-
  		that.lick = function() {
  			TUNG.tongue_got_something = false;
  			mouth.frame  = { x:0, y:1 };
@@ -85,6 +120,7 @@
  			}).visible = true;
  		};
 
+ 		//overrides
  		that.adjust = function() {
  			that.dy += TUNG.gravity;
  			that.y += that.dy;
@@ -99,11 +135,13 @@
 
 	//TODO: fold animation config & logic into resources and tarmac.sprite
 	TUNG.tungy_eyes = function(spec) {
+		//init
 		var blink = 0,
 			blink_open = 3000/30,
 			blink_closed = 3100/30,
 			that = tarmac.sprite('eyes', spec);
 
+		//overrides
 		that.process = function() {
 			blink += 1;
 			if(blink<blink_open) {
@@ -122,11 +160,13 @@
 	};
 
 	TUNG.planet = function(spec) {
+		//init
 		var globe = TUNG.globe({ y: 1000 }),
 			that = tarmac.gameEntity($.extend({
 				entities:[globe]
 			},spec));
 
+		//methods
 		that.rotate = function(deg) {
 			globe.rotation += deg;
 		};
@@ -135,6 +175,7 @@
 	};
 
 	TUNG.globe = function(spec) {
+		//init
 		var that = tarmac.gameEntity($.extend({
 				entities:[
 					//TUNG.tungy_eyes({ y:-1000 }),
@@ -142,6 +183,7 @@
 				]
 			},spec));
 
+		//overrides
 		that.start = function() {
 			for(var i = 50; i > 0; i -= 1) {
 				var mass = 2 + i * 1,
@@ -160,7 +202,7 @@
 	};
 
 	TUNG.rock = function(spec) {
-
+		//init
 		var test_points, 
 			radius = Math.sqrt(spec.mass) * 10,
 			that = tarmac.shapes.circle($.extend({
@@ -169,10 +211,12 @@
 
 		that.mass = spec.mass;
 
+		//custom event listener
 		TUNG.ether.on('tongue-zap', function(e) {
 			test_points = e;
 		});
 
+		//overrides
 		that.adjust = function() {
 			if(test_points) {
 				for(var i = 0; i < test_points.length; i += 1) {
@@ -192,8 +236,10 @@
 	};
 
 	TUNG.tongue = function(spec) {
+		//init
 		var that = tarmac.sprite('tongue', spec);
 
+		//overrides
 		that.onAnimate = function() {
 			var x = 60 + 25 * that.frame.y,
 				c = [{x:0, y:0, r:15}];
