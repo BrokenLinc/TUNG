@@ -3,6 +3,7 @@ var autoprefixer = require('gulp-autoprefixer');
 var less = require('gulp-less');
 var livereload = require('gulp-livereload');
 var minifyCss = require('gulp-minify-css');
+var minifyHtml = require('gulp-minify-html');
 var plumber = require('gulp-plumber');
 var uglify = require('gulp-uglify');
 var usemin = require('gulp-usemin');
@@ -28,11 +29,20 @@ gulp.task('watch', function () {
 gulp.task('usemin', function () {
 	return gulp.src('./src/index.html')
 		.pipe(usemin({
-	        inlinejs: [uglify()],
-	        inlinecss: [minifyCss(), 'concat']
+			css: [minifyCss({
+				keepSpecialComments: 0
+			}), 'concat'],
+			js: [uglify()],
+			jsmod: [uglify()],
+			html: [minifyHtml({empty: true})]
 		}))
-		.pipe(gulp.dest('dist/'));
+		.pipe(gulp.dest('./dist'));
 });
 
-gulp.task('dist', ['less', 'usemin']);
+gulp.task('resources', function () {
+	return gulp.src('./src/resources/*')
+		.pipe(gulp.dest('./dist/resources'));
+});
+
+gulp.task('dist', ['less', 'usemin', 'resources']);
 gulp.task('default', ['less', 'watch']);
