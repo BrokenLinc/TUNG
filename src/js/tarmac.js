@@ -43,10 +43,10 @@
 //	gameEntity: start --> adjust --> draw
 //	sprite: 	start --> adjust --> [onAnimate] --> draw
 
-(function($){
+window.tarmac = (function($){
 
 	//Singleton app & Namespaces
-	var app = window.tarmac = new GameEntity();
+	var app = new GameEntity();
 	app.shapes = {};
 
 
@@ -335,7 +335,7 @@
 			resources = [],
 			resources_loaded = 0;
 
-		that.container = $('body');
+		that.container = document.body;
 
 		that.byKey = function(key) {
 			for(i in resources) {
@@ -402,5 +402,7 @@
 
 		return that;
 	}());
+
+	return app;
 
 })(jQuery);
