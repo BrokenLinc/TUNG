@@ -58,6 +58,34 @@ window.tarmac = (function($){
 	};
 
 	// "Classes"
+	var EventDispatcher = Class.extend({
+		events: {},
+		on: function (key, func) {
+			if (!this.events.hasOwnProperty(key)) {
+				this.events[key] = [];
+			}
+			this.events[key].push(func);
+		},
+		off: function (key, func) {
+			if (this.events.hasOwnProperty(key)) {
+				for (var i in this.events[key]) {
+					if (this.events[key][i] === func) {
+						this.events[key].splice(i, 1);
+					}
+				}
+			}
+		},
+		trigger: function (key, dataObj) {
+			if (this.events.hasOwnProperty(key)) {
+				dataObj = dataObj || {};
+				dataObj.currentTarget = this;
+				for (var i in this.events[key]) {
+					this.events[key][i](dataObj);
+				}
+			}
+		}
+	});
+
 	var GameEntity = Class.extend({
 		construct: function(spec) {
 			spec = spec || {};
@@ -78,9 +106,11 @@ window.tarmac = (function($){
 				}
 			}
 		},
-		addEntity: function(e) {
-			e.parent = this;
-			this.entities.push(e);
+		addEntity: function() {
+			for(var i in arguments) {
+				arguments[i].parent = this;
+				this.entities.push(arguments[i]);
+			}
 			return this;
 		},
 		removeEntity: function(e) {
@@ -236,6 +266,7 @@ window.tarmac = (function($){
 
 	//Singleton App & Public Namespaces
 	var app = new GameEntity();
+	app.EventDispatcher = EventDispatcher;
 	app.GameEntity = GameEntity;
 	app.Scene = Scene;
 	app.Sprite = Sprite;
