@@ -87,23 +87,18 @@ window.tarmac = (function($){
 	});
 
 	var GameEntity = Class.extend({
+		x: 0,
+		y: 0,
+		rotation: 0,
+		scale: 1,
+		isMirrored: false,
+		isFlipped: false,
+		visible: true,
 		construct: function(spec) {
-			spec = spec || {};
+			this.entities = new Array();
 
-			this.x = spec.x || 0;
-			this.y = spec.y || 0;
-			this.resource = spec.resource;
-			this.rotation = spec.rotation || 0;
-			this.scale = spec.scale || 1;
-			this.isMirrored = spec.isMirrored;
-			this.isFlipped = spec.isFlipped;
-			this.visible = (spec.visible == null)? true : spec.visible;
-			this.entities = [];
-
-			if(spec.entities) {
-				for(var i = 0; i < spec.entities.length; i += 1) {
-					this.addEntity(spec.entities[i]);
-				}
+			for(prop in spec) {
+				this[prop] = spec[prop];
 			}
 		},
 		addEntity: function() {
@@ -195,9 +190,10 @@ window.tarmac = (function($){
 
 	var Sprite = GameEntity.extend({
 		construct: function(key, spec){
-			this._super(spec);
+			this.frame = {x: 0, y:0};
 			this.resource = app.resourceManager.byKey(key);
-			this.frame = spec && spec.frame || {x: 0, y:0};
+
+			this._super(spec);
 		},
 		adjust: function() {
 			if(this.animation) {
@@ -243,11 +239,10 @@ window.tarmac = (function($){
 	});
 
 	var Circle = GameEntity.extend({
+		radius: 100,
+		fill: '#888',
 		construct: function(spec) {
 			this._super(spec);
-			var spec = spec || {};
-			this.radius = spec.radius || 100;
-			this.fill = spec.fill || '#888';
 		},
 		draw: function() {
 			app.ctx.beginPath();
@@ -307,7 +302,7 @@ window.tarmac = (function($){
 		var start_game_loop = function() {
 			if(last_update) app.fps = 1000/((new Date()).getTime() - last_update.getTime());
 			game_loop();
-			game_loop_timeout = setTimeout(start_game_loop, 30);	
+			game_loop_timeout = setTimeout(start_game_loop, 20);	
 			last_update = new Date();
 		};
 		var game_loop = function() {
