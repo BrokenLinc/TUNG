@@ -44,11 +44,216 @@
 //	sprite: 	start --> adjust --> [onAnimate] --> draw
 
 (function($){
-	var app = namespace('tarmac');
 
-	app.game = function(spec) {
+	//Singleton app & Namespaces
+	var app = window.tarmac = new GameEntity();
+	app.shapes = {};
 
-		var that = tarmac.gameEntity();
+
+
+	//private utility methods
+	var add_transform = function(transform, target) {
+		target.translate(transform.x, transform.y);
+		target.rotate(transform.r);
+		target.scale(transform.sx, transform.sy);
+	};
+	var remove_transform = function(transform, target) {
+		target.scale(1/transform.sx, 1/transform.sy);
+		target.rotate(-transform.r);
+		target.translate(-transform.x, -transform.y);
+	};
+
+
+
+	// "Classes"
+
+	function GameEntity(spec) {
+		spec = spec || {};
+
+		this.x = spec.x || 0,
+		this.y = spec.y || 0,
+		this.resource = spec.resource,
+		this.rotation = spec.rotation || 0,
+		this.scale = spec.scale || 1;
+		this.isMirrored = spec.isMirrored;
+		this.isFlipped = spec.isFlipped;
+		this.visible = (spec.visible == null)? true : spec.visible;
+		this.entities = [];
+
+		if(spec.entities) {
+			for(var i = 0; i < spec.entities.length; i += 1) {
+				this.addEntity(spec.entities[i]);
+			}
+		}
+	}	
+	GameEntity.prototype.addEntity = function(e) {
+		e.parent = this;
+		this.entities.push(e);
+		return this;
+	};
+	GameEntity.prototype.removeEntity = function(e) {
+		var i = this.entities.indexOf(e);
+		if(i >= 0) {
+			e.parent = null;
+			this.entities.splice(i, 1);
+		}
+		return this;
+	};
+	GameEntity.prototype.remove = function() {
+		this.parent && this.parent.removeEntity(this);
+		return this;
+	};
+	GameEntity.prototype.init = function() {
+		this.start && this.start();
+		this.initChildren();
+		return this;
+	};
+	GameEntity.prototype.initChildren = function() {
+		for(var i = 0; i < this.entities.length; i += 1) {
+			this.entities[i].init();
+		}
+		return this;
+	};
+	GameEntity.prototype.process = function() {
+		var transform_cache = {
+			x:this.x, y:this.y, r:this.rotation,
+			sx:this.scale * (this.isMirrored? -1 : 1),
+			sy:this.scale * (this.isFlipped? -1 : 1)
+		};
+
+		add_transform(transform_cache, app.mat);
+		this.adjust && this.adjust();
+		this.processChildren();
+		remove_transform(transform_cache, app.mat);
+
+		return this;
+	}
+	GameEntity.prototype.processChildren = function() {
+		for(var i = 0; i < this.entities.length; i += 1) {
+			this.entities[i].process();
+		}
+		return this;
+	}
+	GameEntity.prototype.update = function() {
+		var transform_cache = {
+			x:this.x, y:this.y, r:this.rotation,
+			sx:this.scale * (this.isMirrored? -1 : 1),
+			sy:this.scale * (this.isFlipped? -1 : 1)
+		};
+
+		add_transform(transform_cache, app.ctx);
+		if(this.visible) this.draw && this.draw();
+		this.updateChildren();
+		remove_transform(transform_cache, app.ctx);
+
+		return this;
+	};
+	GameEntity.prototype.updateChildren = function() {
+		for(var i = 0; i < this.entities.length; i += 1) {
+			this.entities[i].update();
+		}
+		return this;
+	}
+	app.GameEntity = GameEntity;
+
+
+
+
+	function Scene(spec) {
+		GameEntity.call(this, spec);
+	}
+	Scene.prototype = new GameEntity();
+	Scene.prototype.super_process = Scene.prototype.process;
+	Scene.prototype.process = function() {
+		var w = app.canvas.width;
+		var h = app.canvas.height;
+		this.x = w/2;
+		this.y = h/2;
+		this.scale = Math.min(w/800, h/450);
+
+		return this.super_process();
+	};
+	app.Scene = Scene;
+
+
+
+	function Sprite(key, spec) {
+		GameEntity.call(this, spec);
+
+		this.resource = app.resourceManager.byKey(key);
+		this.frame = spec && spec.frame || {x: 0, y:0};
+	}
+	Sprite.prototype = new GameEntity();
+	Sprite.prototype.adjust = function() {
+		if(this.animation) {
+			var keyframe = this.animation.keyframes[this.animation_keyframe_index];
+			if((new Date()).getTime() - this.animation_keyframe_index_start_time > (keyframe.d || this.animation.d)) {
+				this.animation_keyframe_index++;
+				if(this.animation_keyframe_index >= this.animation.keyframes.length) {
+					this.animation_times++;
+					if(this.animation_repeat >= 0 && this.animation_times > this.animation_repeat) {
+						this.animation_complete && this.animation_complete();
+						this.stop();
+					} else {
+						this.animation_keyframe_index = 0;
+					}
+				}
+				if(this.animation) keyframe = this.animation.keyframes[this.animation_keyframe_index];
+			}
+			if(this.animation) this.frame = $.extend(this.frame, keyframe)
+			this.onAnimate && this.onAnimate();
+		}
+	};
+	Sprite.prototype.draw = function() {
+		app.draw_resource(this.resource, this.frame);
+	};
+	Sprite.prototype.play = function(animationKey, repeat, complete) {
+		this.animation = app.spriteAnimationManager.byKey(animationKey);
+		if(this.animation) {
+			this.animation_times = 0;
+			this.animation_repeat = repeat;
+			this.animation_keyframe_index = 0;
+			this.animation_complete = complete;
+			this.animation_keyframe_index_start_time = (new Date()).getTime();
+		}
+		return this;
+	};
+	Sprite.prototype.playOnce = function(animationKey, complete) {
+		return this.play(animationKey, 0, complete);
+	}
+	Sprite.prototype.stop = function() {
+		this.animation = null;
+		return this;
+	};
+	app.Sprite = Sprite;
+
+
+
+	function Circle(spec) {
+		GameEntity.call(this, spec);
+
+		var spec = spec || {};
+		this.radius = spec.radius || 100;
+		this.fill = spec.fill || '#888';
+	}
+	Circle.prototype = new GameEntity();
+	Circle.prototype.draw = function() {
+		app.ctx.beginPath();
+		app.ctx.lineWidth = 0;
+		app.ctx.arc(0, 0, this.radius, 0, 2 * Math.PI, false);
+		app.ctx.fillStyle = this.fill;
+		app.ctx.fill();
+		// app.ctx.strokeStyle = '#003300';
+		// app.ctx.stroke();
+
+		return this;
+	};
+	app.shapes.Circle = Circle;
+
+
+
+	//Singleton app methods & properties
+	app.setup = function(spec) {
 
 		var last_update;
 
@@ -93,8 +298,8 @@
 			app.clear_canvas();
 
 			if(isPreloaded) {
-				that.process();
-				that.update();
+				app.process();
+				app.update();
 			}
 		};
 
@@ -104,194 +309,11 @@
 			spec.resources, 
 			spec.resourcePathPrefix, 
 			function(){
-				that.init();
+				app.init();
 				isPreloaded = true;
 			}
 		);
-
-		return that;
 	};
-
-	app.gameEntity = function(spec) {
-		spec = spec || {};
-
-		var that = {};
-		that.x = spec.x || 0,
-		that.y = spec.y || 0,
-		that.resource = spec.resource,
-		that.rotation = spec.rotation || 0,
-		that.scale = spec.scale || 1;
-		that.isMirrored = spec.isMirrored;
-		that.isFlipped = spec.isFlipped;
-		that.visible = (spec.visible == null)? true : spec.visible;
-		that.entities = [];
-		
-		that.addEntity = function(e) {
-			e.parent = that;
-			that.entities.push(e);
-			return that;
-		};
-		that.removeEntity = function(e) {
-			var i = that.entities.indexOf(e);
-			if(i >= 0) {
-				e.parent = null;
-				that.entities.splice(i, 1);
-			}
-			return that;
-		};
-		that.remove = function() {
-			that.parent && that.parent.removeEntity(that);
-			return that;
-		};
-
-		if(spec.entities) {
-			for(var i = 0; i < spec.entities.length; i += 1) {
-				that.addEntity(spec.entities[i]);
-			}
-		}
-
-		var add_transform = function(transform, target) {
-			target.translate(transform.x, transform.y);
-			target.rotate(transform.r);
-			target.scale(transform.sx, transform.sy);
-		};
-		var remove_transform = function(transform, target) {
-			target.scale(1/transform.sx, 1/transform.sy);
-			target.rotate(-transform.r);
-			target.translate(-transform.x, -transform.y);
-		};
-
-		that.init = function() {
-			that.start && that.start();
-			that.initChildren();
-			return that;
-		};
-		that.initChildren = function() {
-			for(var i = 0; i < that.entities.length; i += 1) {
-				that.entities[i].init();
-			}
-			return that;
-		};
-		that.process = function() {
-			var transform_cache = {
-				x:that.x, y:that.y, r:that.rotation,
-				sx:that.scale * (that.isMirrored? -1 : 1),
-				sy:that.scale * (that.isFlipped? -1 : 1)
-			};
-
-			add_transform(transform_cache, app.mat);
-			that.adjust && that.adjust();
-			that.processChildren();
-			remove_transform(transform_cache, app.mat);
-
-			return that;
-		}
-		that.processChildren = function() {
-			for(var i = 0; i < that.entities.length; i += 1) {
-				that.entities[i].process();
-			}
-			return that;
-		}
-		that.update = function() {
-			var transform_cache = {
-				x:that.x, y:that.y, r:that.rotation,
-				sx:that.scale * (that.isMirrored? -1 : 1),
-				sy:that.scale * (that.isFlipped? -1 : 1)
-			};
-
-			add_transform(transform_cache, app.ctx);
-			if(that.visible) that.draw && that.draw();
-			that.updateChildren();
-			remove_transform(transform_cache, app.ctx);
-
-			return that;
-		};
-		that.updateChildren = function() {
-			for(var i = 0; i < that.entities.length; i += 1) {
-				that.entities[i].update();
-			}
-			return that;
-		}
-
-		return that;
-	};
-
-	app.scene = function(spec) {
-		var that = app.gameEntity(spec),
-			super_process = that.process;
-
-		that.process = function() {
-			var w = tarmac.canvas.width;
-			var h = tarmac.canvas.height;
-			that.x = w/2;
-			that.y = h/2;
-			that.scale = Math.min(w/800, h/450);
-
-			return super_process();
-		};
-
-		return that;
-	};
-
-	app.sprite = function(key, spec) {
-		var that = app.gameEntity(spec),
-			resource = app.resourceManager.byKey(key),
-			animation, 
-			animation_times,
-			animation_repeat, 
-			animation_complete, 
-			animation_keyframe_index,
-			animation_keyframe_index_start_time;
-		that.frame = spec && spec.frame || {x: 0, y:0};
-		
-		that.adjust = function() {
-			if(animation) {
-				var keyframe = animation.keyframes[animation_keyframe_index];
-				if((new Date()).getTime() - animation_keyframe_index_start_time > (keyframe.d || animation.d)) {
-					animation_keyframe_index++;
-					if(animation_keyframe_index >= animation.keyframes.length) {
-						animation_times++;
-						if(animation_repeat >= 0 && animation_times > animation_repeat) {
-							animation_complete && animation_complete();
-							that.stop();
-						} else {
-							animation_keyframe_index = 0;
-						}
-					}
-					if(animation) keyframe = animation.keyframes[animation_keyframe_index];
-				}
-				if(animation) that.frame = $.extend(that.frame, keyframe)
-				that.onAnimate && that.onAnimate();
-			}
-		};
-
-		that.draw = function() {
-			app.draw_resource(resource, that.frame);
-		};
-
-		that.play = function(animationKey, repeat, complete) {
-			animation = app.spriteAnimationManager.byKey(animationKey);
-			if(animation) {
-				animation_times = 0;
-				animation_repeat = repeat;
-				animation_keyframe_index = 0;
-				animation_complete = complete;
-				animation_keyframe_index_start_time = (new Date()).getTime();
-			}
-			return that;
-		};
-		that.playOnce = function(animationKey, complete) {
-			return that.play(animationKey, 0, complete);
-		}
-		that.stop = function() {
-			animation = null;
-			return that;
-		};
-
-		return that;
-	};
-
-	//drawing methods
 	app.clear_canvas = function() {
 		app.ctx.fillStyle = app.background;
 		app.ctx.fillRect(0, 0, app.canvas.width, app.canvas.height);
@@ -308,8 +330,6 @@
 			- w * o.x, - h * o.y, 
 			w, h);
 	};
-
-	//Singleton
 	app.resourceManager = (function() {
 		var that = {},
 			resources = [],
@@ -345,8 +365,6 @@
 
 		return that;
 	}());
-
-	//Singleton
 	app.spriteAnimationManager = (function() {
 		var that = {},
 			animations = [];
@@ -362,7 +380,6 @@
 
 		return that;
 	}());
-
 	app.keysDown = (function(){
 		var that = new EventDispatcher();
 
@@ -385,32 +402,5 @@
 
 		return that;
 	}());
-
-})(jQuery);
-
-(function($){
-	var shapes = namespace('tarmac.shapes');
-
-	shapes.circle = function(spec) {
-		var spec = spec || {},
-			that = tarmac.gameEntity(spec);
-
-		that.radius = spec.radius || 100;
-		that.fill = spec.fill || '#888';
-
-		that.draw = function() {
-			tarmac.ctx.beginPath();
-			tarmac.ctx.lineWidth = 0;
-			tarmac.ctx.arc(0, 0, that.radius, 0, 2 * Math.PI, false);
-			tarmac.ctx.fillStyle = that.fill;
-			tarmac.ctx.fill();
-			// tarmac.ctx.strokeStyle = '#003300';
-			// tarmac.ctx.stroke();
-
-			return that;
-		};
-
-		return that;
-	};
 
 })(jQuery);
