@@ -19,7 +19,6 @@ window.TUNG = (function($, tarmac){
 
 			this.hero = new Hero({ max_y: ground_y - 60 });
 	 		this.planet = new Planet({ y: ground_y });
-
 	 		this.addEntity(this.planet, this.hero);
 
 	 		//custom event listeners
@@ -46,10 +45,11 @@ window.TUNG = (function($, tarmac){
 	});
 
 	var Hero = tarmac.GameEntity.extend({
+		scale: 0.8,
+		dy: 0,
+		max_y: 0,
 		construct: function(spec) {
-			this._super($.extend({
-				scale: 0.8
-			}, spec));
+			this._super(spec);
 
 			var self = this;
 
@@ -57,10 +57,6 @@ window.TUNG = (function($, tarmac){
 			this.eyes = new Eyes({ x:15, y:20 });
 			this.mouth = new tarmac.Sprite('mouth', { y:50 });
 			this.tongue = new Tongue({ x: -16, y:50, visible:false });
-
-			this.dy = 0;
-			this.max_y = spec.max_y || 0;
-
 			this.addEntity(this.body, this.eyes, this.mouth, this.tongue);
 
 	 		//keyboard input
@@ -99,12 +95,11 @@ window.TUNG = (function($, tarmac){
 
 	//TODO: fold animation config & logic into resources and tarmac.Sprite
 	var Eyes = tarmac.Sprite.extend({
+		blink: 0,
+		blink_open: 3000/30,
+		blink_closed: 3100/30,
 		construct: function(spec) {
 			this._super('eyes', spec);
-
-			this.blink = 0,
-			this.blink_open = 3000/30,
-			this.blink_closed = 3100/30;
 		},
 		process: function() {
 			this.blink += 1;
@@ -124,6 +119,7 @@ window.TUNG = (function($, tarmac){
 	var Planet = tarmac.GameEntity.extend({
 		construct: function(spec) {
 			this._super(spec);
+
 			this.globe = new Globe({ y: 1000 });
 			this.addEntity(this.globe);
 		},
@@ -135,6 +131,7 @@ window.TUNG = (function($, tarmac){
 	var Globe = tarmac.GameEntity.extend({
 		construct: function(spec) {
 			this._super(spec);
+
 			//this.addEntity(new Eyes({ y:-1000 }));
 			this.addEntity(new tarmac.shapes.Circle({ radius: spec.y }));
 		},
@@ -154,14 +151,13 @@ window.TUNG = (function($, tarmac){
 	});
 
 	var Rock = tarmac.shapes.Circle.extend({
+		mass: 50,
 		construct: function(spec) {
-			this._super($.extend({
-				radius: Math.sqrt(spec.mass) * 10
-			},spec));
-
-			this.mass = spec.mass;
+			this._super(spec);
 
 			var self = this;
+
+			this.radius = Math.sqrt(this.mass) * 10;
 
 			//custom event listener
 			ether.on('tongue-zap', function(e) {
@@ -180,6 +176,7 @@ window.TUNG = (function($, tarmac){
 					//TODO: rect test for other shapes
 					test_point = null;
 				}
+				this.test_points = null;
 			}
 		}
 	});
