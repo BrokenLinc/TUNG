@@ -45,12 +45,6 @@
 
 window.tarmac = (function($){
 
-	//Singleton app & Namespaces
-	var app = new GameEntity();
-	app.shapes = {};
-
-
-
 	//private utility methods
 	var add_transform = function(transform, target) {
 		target.translate(transform.x, transform.y);
@@ -63,196 +57,191 @@ window.tarmac = (function($){
 		target.translate(-transform.x, -transform.y);
 	};
 
-
-
 	// "Classes"
+	var GameEntity = Class.extend({
+		construct: function(spec) {
+			spec = spec || {};
 
-	function GameEntity(spec) {
-		spec = spec || {};
+			this.x = spec.x || 0;
+			this.y = spec.y || 0;
+			this.resource = spec.resource;
+			this.rotation = spec.rotation || 0;
+			this.scale = spec.scale || 1;
+			this.isMirrored = spec.isMirrored;
+			this.isFlipped = spec.isFlipped;
+			this.visible = (spec.visible == null)? true : spec.visible;
+			this.entities = [];
 
-		this.x = spec.x || 0,
-		this.y = spec.y || 0,
-		this.resource = spec.resource,
-		this.rotation = spec.rotation || 0,
-		this.scale = spec.scale || 1;
-		this.isMirrored = spec.isMirrored;
-		this.isFlipped = spec.isFlipped;
-		this.visible = (spec.visible == null)? true : spec.visible;
-		this.entities = [];
-
-		if(spec.entities) {
-			for(var i = 0; i < spec.entities.length; i += 1) {
-				this.addEntity(spec.entities[i]);
-			}
-		}
-	}	
-	GameEntity.prototype.addEntity = function(e) {
-		e.parent = this;
-		this.entities.push(e);
-		return this;
-	};
-	GameEntity.prototype.removeEntity = function(e) {
-		var i = this.entities.indexOf(e);
-		if(i >= 0) {
-			e.parent = null;
-			this.entities.splice(i, 1);
-		}
-		return this;
-	};
-	GameEntity.prototype.remove = function() {
-		this.parent && this.parent.removeEntity(this);
-		return this;
-	};
-	GameEntity.prototype.init = function() {
-		this.start && this.start();
-		this.initChildren();
-		return this;
-	};
-	GameEntity.prototype.initChildren = function() {
-		for(var i = 0; i < this.entities.length; i += 1) {
-			this.entities[i].init();
-		}
-		return this;
-	};
-	GameEntity.prototype.process = function() {
-		var transform_cache = {
-			x:this.x, y:this.y, r:this.rotation,
-			sx:this.scale * (this.isMirrored? -1 : 1),
-			sy:this.scale * (this.isFlipped? -1 : 1)
-		};
-
-		add_transform(transform_cache, app.mat);
-		this.adjust && this.adjust();
-		this.processChildren();
-		remove_transform(transform_cache, app.mat);
-
-		return this;
-	}
-	GameEntity.prototype.processChildren = function() {
-		for(var i = 0; i < this.entities.length; i += 1) {
-			this.entities[i].process();
-		}
-		return this;
-	}
-	GameEntity.prototype.update = function() {
-		var transform_cache = {
-			x:this.x, y:this.y, r:this.rotation,
-			sx:this.scale * (this.isMirrored? -1 : 1),
-			sy:this.scale * (this.isFlipped? -1 : 1)
-		};
-
-		add_transform(transform_cache, app.ctx);
-		if(this.visible) this.draw && this.draw();
-		this.updateChildren();
-		remove_transform(transform_cache, app.ctx);
-
-		return this;
-	};
-	GameEntity.prototype.updateChildren = function() {
-		for(var i = 0; i < this.entities.length; i += 1) {
-			this.entities[i].update();
-		}
-		return this;
-	}
-	app.GameEntity = GameEntity;
-
-
-
-
-	function Scene(spec) {
-		GameEntity.call(this, spec);
-	}
-	Scene.prototype = new GameEntity();
-	Scene.prototype.super_process = Scene.prototype.process;
-	Scene.prototype.process = function() {
-		var w = app.canvas.width;
-		var h = app.canvas.height;
-		this.x = w/2;
-		this.y = h/2;
-		this.scale = Math.min(w/800, h/450);
-
-		return this.super_process();
-	};
-	app.Scene = Scene;
-
-
-
-	function Sprite(key, spec) {
-		GameEntity.call(this, spec);
-
-		this.resource = app.resourceManager.byKey(key);
-		this.frame = spec && spec.frame || {x: 0, y:0};
-	}
-	Sprite.prototype = new GameEntity();
-	Sprite.prototype.adjust = function() {
-		if(this.animation) {
-			var keyframe = this.animation.keyframes[this.animation_keyframe_index];
-			if((new Date()).getTime() - this.animation_keyframe_index_start_time > (keyframe.d || this.animation.d)) {
-				this.animation_keyframe_index++;
-				if(this.animation_keyframe_index >= this.animation.keyframes.length) {
-					this.animation_times++;
-					if(this.animation_repeat >= 0 && this.animation_times > this.animation_repeat) {
-						this.animation_complete && this.animation_complete();
-						this.stop();
-					} else {
-						this.animation_keyframe_index = 0;
-					}
+			if(spec.entities) {
+				for(var i = 0; i < spec.entities.length; i += 1) {
+					this.addEntity(spec.entities[i]);
 				}
-				if(this.animation) keyframe = this.animation.keyframes[this.animation_keyframe_index];
 			}
-			if(this.animation) this.frame = $.extend(this.frame, keyframe)
-			this.onAnimate && this.onAnimate();
+		},
+		addEntity: function(e) {
+			e.parent = this;
+			this.entities.push(e);
+			return this;
+		},
+		removeEntity: function(e) {
+			var i = this.entities.indexOf(e);
+			if(i >= 0) {
+				e.parent = null;
+				this.entities.splice(i, 1);
+			}
+			return this;
+		},
+		remove: function() {
+			this.parent && this.parent.removeEntity(this);
+			return this;
+		},
+		init: function() {
+			this.start && this.start();
+			this.initChildren();
+			return this;
+		},
+		initChildren: function() {
+			for(var i = 0; i < this.entities.length; i += 1) {
+				this.entities[i].init();
+			}
+			return this;
+		},
+		process: function() {
+			var transform_cache = {
+				x:this.x, y:this.y, r:this.rotation,
+				sx:this.scale * (this.isMirrored? -1 : 1),
+				sy:this.scale * (this.isFlipped? -1 : 1)
+			};
+
+			add_transform(transform_cache, app.mat);
+			this.adjust && this.adjust();
+			this.processChildren();
+			remove_transform(transform_cache, app.mat);
+
+			return this;
+		},
+		processChildren: function() {
+			for(var i = 0; i < this.entities.length; i += 1) {
+				this.entities[i].process();
+			}
+			return this;
+		},
+		update: function() {
+			var transform_cache = {
+				x:this.x, y:this.y, r:this.rotation,
+				sx:this.scale * (this.isMirrored? -1 : 1),
+				sy:this.scale * (this.isFlipped? -1 : 1)
+			};
+
+			add_transform(transform_cache, app.ctx);
+			if(this.visible) this.draw && this.draw();
+			this.updateChildren();
+			remove_transform(transform_cache, app.ctx);
+
+			return this;
+		},
+		updateChildren: function() {
+			for(var i = 0; i < this.entities.length; i += 1) {
+				this.entities[i].update();
+			}
+			return this;
 		}
-	};
-	Sprite.prototype.draw = function() {
-		app.draw_resource(this.resource, this.frame);
-	};
-	Sprite.prototype.play = function(animationKey, repeat, complete) {
-		this.animation = app.spriteAnimationManager.byKey(animationKey);
-		if(this.animation) {
-			this.animation_times = 0;
-			this.animation_repeat = repeat;
-			this.animation_keyframe_index = 0;
-			this.animation_complete = complete;
-			this.animation_keyframe_index_start_time = (new Date()).getTime();
+	});
+
+	var Scene = GameEntity.extend({
+		construct: function(spec){
+			this._super(spec);
+		},
+		process: function() {
+			var w = app.canvas.width;
+			var h = app.canvas.height;
+			this.x = w/2;
+			this.y = h/2;
+			this.scale = Math.min(w/800, h/450);
+
+			return this._super();
 		}
-		return this;
-	};
-	Sprite.prototype.playOnce = function(animationKey, complete) {
-		return this.play(animationKey, 0, complete);
-	}
-	Sprite.prototype.stop = function() {
-		this.animation = null;
-		return this;
-	};
+	});
+
+	var Sprite = GameEntity.extend({
+		construct: function(key, spec){
+			this._super(spec);
+			this.resource = app.resourceManager.byKey(key);
+			this.frame = spec && spec.frame || {x: 0, y:0};
+		},
+		adjust: function() {
+			if(this.animation) {
+				var keyframe = this.animation.keyframes[this.animation_keyframe_index];
+				if((new Date()).getTime() - this.animation_keyframe_index_start_time > (keyframe.d || this.animation.d)) {
+					this.animation_keyframe_index++;
+					if(this.animation_keyframe_index >= this.animation.keyframes.length) {
+						this.animation_times++;
+						if(this.animation_repeat >= 0 && this.animation_times > this.animation_repeat) {
+							this.animation_complete && this.animation_complete();
+							this.stop();
+						} else {
+							this.animation_keyframe_index = 0;
+						}
+					}
+					if(this.animation) keyframe = this.animation.keyframes[this.animation_keyframe_index];
+				}
+				if(this.animation) this.frame = $.extend(this.frame, keyframe)
+				this.onAnimate && this.onAnimate();
+			}
+		},
+		draw: function() {
+			app.draw_resource(this.resource, this.frame);
+		},
+		play: function(animationKey, repeat, complete) {
+			this.animation = app.spriteAnimationManager.byKey(animationKey);
+			if(this.animation) {
+				this.animation_times = 0;
+				this.animation_repeat = repeat;
+				this.animation_keyframe_index = 0;
+				this.animation_complete = complete;
+				this.animation_keyframe_index_start_time = (new Date()).getTime();
+			}
+			return this;
+		},
+		playOnce: function(animationKey, complete) {
+			return this.play(animationKey, 0, complete);
+		},
+		stop: function() {
+			this.animation = null;
+			return this;
+		}
+	});
+
+	var Circle = GameEntity.extend({
+		construct: function(spec) {
+			this._super(spec);
+			var spec = spec || {};
+			this.radius = spec.radius || 100;
+			this.fill = spec.fill || '#888';
+		},
+		draw: function() {
+			app.ctx.beginPath();
+			app.ctx.lineWidth = 0;
+			app.ctx.arc(0, 0, this.radius, 0, 2 * Math.PI, false);
+			app.ctx.fillStyle = this.fill;
+			app.ctx.fill();
+			// app.ctx.strokeStyle = '#003300';
+			// app.ctx.stroke();
+
+			return this;
+		}
+	});
+
+
+
+	//Singleton App & Public Namespaces
+	var app = new GameEntity();
+	app.GameEntity = GameEntity;
+	app.Scene = Scene;
 	app.Sprite = Sprite;
-
-
-
-	function Circle(spec) {
-		GameEntity.call(this, spec);
-
-		var spec = spec || {};
-		this.radius = spec.radius || 100;
-		this.fill = spec.fill || '#888';
-	}
-	Circle.prototype = new GameEntity();
-	Circle.prototype.draw = function() {
-		app.ctx.beginPath();
-		app.ctx.lineWidth = 0;
-		app.ctx.arc(0, 0, this.radius, 0, 2 * Math.PI, false);
-		app.ctx.fillStyle = this.fill;
-		app.ctx.fill();
-		// app.ctx.strokeStyle = '#003300';
-		// app.ctx.stroke();
-
-		return this;
+	app.shapes = {
+		Circle: Circle
 	};
-	app.shapes.Circle = Circle;
-
-
-
-	//Singleton app methods & properties
 	app.setup = function(spec) {
 
 		var last_update;
