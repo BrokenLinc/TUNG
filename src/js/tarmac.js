@@ -277,7 +277,7 @@ window.tarmac = (function($){
 		app.canvas = spec.canvas;
 		app.ctx = app.canvas.getContext('2d');
 		app.mat = new Transform();
-		app.resourceManager.container = spec.resourceContainer;
+		app.resourceManager.container = spec.resourceContainer || $('<div/>').appendTo('body').get(0);
 		app.spriteAnimationManager.load(spec.sprite_animations);
 
 		//canvas setup
