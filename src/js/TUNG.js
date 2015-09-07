@@ -8,9 +8,7 @@ window.TUNG = (function($, tarmac){
 	function pointsCloserThan(p, q, d) {
 		return Math.pow(p.x - q.x, 2) + Math.pow(p.y - q.y, 2) < Math.pow(d,2);
 	}
-
-	// "Classes"
-
+	
 	var GameScene = tarmac.Scene.extend({
 		construct: function() {
 			this._super();
@@ -25,6 +23,7 @@ window.TUNG = (function($, tarmac){
 	 		ether.on('tongue-touch', function(e){
 	 			if(!tongue_got_something) {
 		 			self.planet.scale /= (1 + e.remove().mass/1000);
+					tarmac.play_sound('coins');
 		 			tongue_got_something = true;
 		 		}
 	 		});
@@ -200,20 +199,26 @@ window.TUNG = (function($, tarmac){
 		setup: function(spec) {
 			tarmac.setup($.extend({
 				//TODO: convert to indexed names?
-				resources: [{
-					path: 'body.svg',
-					spriteMap: {x:2, y:2}
-				},{
-					path: 'eyes.svg',
-					spriteMap: {x:1, y:10}
-				},{
-					path: 'mouth.svg',
-					spriteMap: {x:1, y:10}
-				},{
-					path: 'tongue.svg',
-					spriteMap: {x:2, y:7},
-					origin: {x:0.10, y:0.5}
-				}],
+				//TODO: resources => sprites/sounds/etc
+				resources: {
+					sounds:[{
+						path: 'coins.mp3'
+					}],
+					images: [{
+						path: 'body.svg',
+						spriteMap: {x:2, y:2}
+					},{
+						path: 'eyes.svg',
+						spriteMap: {x:1, y:10}
+					},{
+						path: 'mouth.svg',
+						spriteMap: {x:1, y:10}
+					},{
+						path: 'tongue.svg',
+						spriteMap: {x:2, y:7},
+						origin: {x:0.10, y:0.5}
+					}]
+				},
 				sprite_animations: [{
 					key: 'tongue-lick',
 					d: 60,
