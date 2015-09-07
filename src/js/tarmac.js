@@ -302,7 +302,9 @@ window.tarmac = (function($){
 		var start_game_loop = function() {
 			if(last_update) app.fps = 1000/((new Date()).getTime() - last_update.getTime());
 			game_loop();
-			game_loop_timeout = setTimeout(start_game_loop, 20);	
+			game_loop_timeout = setTimeout(function(){
+				window.requestAnimationFrame(start_game_loop);
+			}, 20);	//throttling around 50fps seems to keep my MacBook fan from going nuts
 			last_update = new Date();
 		};
 		var game_loop = function() {
@@ -345,6 +347,9 @@ window.tarmac = (function($){
 			- w * o.x, - h * o.y, 
 			w, h);
 	};
+	app.play_sound = function(key) {
+		app.resourceManager.byKey(key).sound.play();
+	};
 	app.resourceManager = (function() {
 		var that = {},
 			resources = [],
@@ -360,6 +365,9 @@ window.tarmac = (function($){
 		that.load = function(sources, pathPrefix, complete) {
 			//TODO: skip duplicates
 
+			var image_sources = sources.images;
+			var sound_sources = sources.sounds;
+
 			var inc = function() {
 				resources_loaded += 1;
 				if(resources_loaded >= resources.length) {
@@ -367,14 +375,33 @@ window.tarmac = (function($){
 				}
 			};
 
-			for(var i = 0; i< sources.length; i += 1) {
-				var res = $.extend({}, sources[i], {img: new Image()});
-				if(!res.key) res.key = res.path.split('.')[0];
-				resources.push(res);
-				$(res.img)
-					.appendTo(that.container)
-					.on('load', inc)
-					.attr('src', (pathPrefix || '') + res.path);
+			//TODO: only use soundManager if there are sounds to load
+			soundManager.setup({
+				url: pathPrefix,
+				debugMode: false,
+				ontimeout: function() { /* TODO: error handling */ },
+				onready: load_now
+			});
+
+			function load_now() {
+				for(var i = 0; i< image_sources.length; i += 1) {
+					var res = $.extend({}, image_sources[i], {img: new Image()});
+					if(!res.key) res.key = res.path.split('.')[0];
+					resources.push(res);
+					$(res.img)
+						.appendTo(that.container)
+						.on('load', inc)
+						.attr('src', (pathPrefix || '') + res.path);
+				}
+				for(var i = 0; i< sound_sources.length; i += 1) {
+					var res = $.extend({}, sound_sources[i]);
+					res.sound = soundManager.createSound({
+						url: (pathPrefix || '') + res.path
+					});
+					res.sound.load({ onload: inc });
+					if(!res.key) res.key = res.path.split('.')[0];
+					resources.push(res);
+				}
 			}
 		}
 
