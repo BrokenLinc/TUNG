@@ -365,13 +365,19 @@ window.tarmac = (function($){
 		that.load = function(sources, pathPrefix, complete) {
 			//TODO: skip duplicates
 
-			var image_sources = sources.images;
-			var sound_sources = sources.sounds;
+			var image_sources = sources.images || [];
+			var sound_sources = sources.sounds || [];
+
+			if(image_sources.length + sound_sources.length == 0) {
+				complete && complete();
+				return;
+			}
 
 			var inc = function() {
 				resources_loaded += 1;
 				if(resources_loaded >= resources.length) {
 					complete && complete();
+					return;
 				}
 			};
 

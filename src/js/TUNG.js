@@ -198,8 +198,6 @@ window.TUNG = (function($, tarmac){
 	return {
 		setup: function(spec) {
 			tarmac.setup($.extend({
-				//TODO: convert to indexed names?
-				//TODO: resources => sprites/sounds/etc
 				resources: {
 					sounds:[{
 						path: 'coins.mp3'
