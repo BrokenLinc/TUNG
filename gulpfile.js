@@ -5,6 +5,7 @@ var livereload = require('gulp-livereload');
 var minifyCss = require('gulp-minify-css');
 var minifyHtml = require('gulp-minify-html');
 var plumber = require('gulp-plumber');
+var serve = require('gulp-serve');
 var uglify = require('gulp-uglify');
 var usemin = require('gulp-usemin');
 var watch = require('gulp-watch');
@@ -44,5 +45,8 @@ gulp.task('resources', function () {
 		.pipe(gulp.dest('./dist/resources'));
 });
 
-gulp.task('dist', ['less', 'usemin', 'resources']);
-gulp.task('default', ['less', 'watch']);
+gulp.task('serve', serve('src'));
+gulp.task('serve-dist', serve('dist'));
+
+gulp.task('dist', ['less', 'usemin', 'resources', 'serve-dist']);
+gulp.task('default', ['less', 'watch', 'serve']);
