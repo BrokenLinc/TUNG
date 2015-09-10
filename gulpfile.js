@@ -33,6 +33,7 @@ gulp.task('usemin', function () {
 			css: [minifyCss({
 				keepSpecialComments: 0
 			}), 'concat'],
+			tarmac: [uglify()],
 			js: [uglify()],
 			jsmod: [uglify()],
 			html: [minifyHtml({empty: true})]

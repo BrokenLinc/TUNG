@@ -11,22 +11,23 @@
 		<link rel="stylesheet" href="css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/game.css">
 		<!-- endbuild -->
-
-		<!-- build:jsmod mod.js -->
-		<script src="js/vendor/modernizr-2.6.2.min.js"></script>
-		<!-- endbuild -->
 	</head>
 	<body>
 
 		<canvas id="game-canvas" class="normal-cursor"></canvas>
 
-		<!-- build:js app.js -->
+		<!-- build:tarmac tarmac.js -->
 		<script src="js/tarmac/vendor/jquery-1.10.2.min.js"></script>
 		<script src="js/tarmac/vendor/soundmanager2-jsmin.js"></script>
 		
 		<script src="js/tarmac/inherit.js"></script>
 		<script src="js/tarmac/transform.js"></script>
 		<script src="js/tarmac/tarmac.js"></script>
+		<!-- endbuild -->
+
+		<!-- build:js app.js -->
+		<script src="js/vendor/bootstrap.min.js"></script>
+		<script src="js/vendor/bootbox.min.js"></script>
 
 		<script src="js/TUNG.js"></script>
 		<script src="js/index.js"></script>

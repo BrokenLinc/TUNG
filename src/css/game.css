@@ -14,3 +14,6 @@ body {
   height: 0;
   overflow: hidden;
 }
+.bootbox-prompt-required [data-bb-handler="cancel"] {
+  display: none;
+}
